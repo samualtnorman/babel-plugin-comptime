@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@babel/types": "^7.25.8",
 		"@samual/jsi": "link:../js-interpreter/dist",
+		"@samual/lib": "0.12.1-5bd9e27",
 		"seroval": "^1.1.1"
 	}
 }
