@@ -1,5 +1,6 @@
 {
 	"name": "js-comptime",
+	"license": "MIT",
 	"type": "module",
 	"devDependencies": {
 		"@rollup/plugin-babel": "^6.0.4",
