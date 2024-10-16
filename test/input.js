@@ -1,1 +1,0 @@
-console.log(comptime$("Hello, world!".split("").map(character => character.charCodeAt())))

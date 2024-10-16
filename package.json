@@ -1,20 +1,8 @@
 {
-	"name": "js-comptime",
-	"license": "MIT",
-	"type": "module",
 	"devDependencies": {
-		"@rollup/plugin-babel": "^6.0.4",
-		"@samual/rollup-config": "0.1.2-6b64505",
 		"@total-typescript/ts-reset": "^0.6.1",
-		"@types/babel__core": "^7.20.5",
+		"@types/braces": "^3.0.4",
 		"@types/node": "^22.7.5",
-		"babel-plugin-here": "1.0.2-87a5573",
-		"rollup": "^4.24.0"
-	},
-	"dependencies": {
-		"@babel/types": "^7.25.8",
-		"@samual/jsi": "link:../js-interpreter/dist",
-		"@samual/lib": "0.12.1-5bd9e27",
-		"seroval": "^1.1.1"
+		"braces": "^3.0.3"
 	}
 }

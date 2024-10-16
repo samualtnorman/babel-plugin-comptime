@@ -1,0 +1,17 @@
+{
+	"files.insertFinalNewline": true,
+	"files.trimFinalNewlines": true,
+	"files.trimTrailingWhitespace": true,
+	"better-comments.tags": [
+		{
+			"tag": "NOTE",
+			"color": "#22C55E",
+			"strikethrough": false,
+			"underline": true,
+			"backgroundColor": "transparent",
+			"bold": true,
+			"italic": false
+		}
+	]
+
+}

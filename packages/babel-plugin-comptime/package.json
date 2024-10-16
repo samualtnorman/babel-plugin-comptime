@@ -1,0 +1,24 @@
+{
+	"name": "babel-plugin-comptime",
+	"license": "MIT",
+	"type": "module",
+	"dependencies": {
+		"@babel/generator": "^7.25.7",
+		"@babel/types": "^7.25.8",
+		"@samual/lib": "0.12.1-5bd9e27",
+		"js-comptime": "workspace:*",
+		"seroval": "^1.1.1"
+	},
+	"devDependencies": {
+		"@babel/traverse": "^7.25.7",
+		"@rollup/plugin-babel": "^6.0.4",
+		"@samual/rollup-config": "0.1.2-6b64505",
+		"@total-typescript/ts-reset": "^0.6.1",
+		"@types/babel__core": "^7.20.5",
+		"@types/babel__generator": "^7.6.8",
+		"@types/babel__traverse": "^7.20.6",
+		"@types/node": "^22.7.5",
+		"babel-plugin-here": "1.0.2-87a5573",
+		"rollup": "^4.24.0"
+	}
+}
