@@ -1,3 +1,4 @@
+import { LaxPartial } from "@samual/lib"
 import type { EvaluationContextSignalTag } from "./EvaluationContextSignalTag"
 
 export type EvaluationContextSignal =
@@ -14,8 +15,18 @@ export type EvaluationContext = {
 	signal: EvaluationContextSignal | undefined
 }
 
+export const EvaluationContext = (init: LaxPartial<EvaluationContext> = {}): EvaluationContext => ({
+	bindings: init.bindings || [ new Map ],
+	statementLabel: init.statementLabel,
+	this: init.this,
+	callSuper: init.callSuper,
+	getSuperProperty: init.getSuperProperty,
+	callSuperProperty: init.callSuperProperty,
+	signal: init.signal
+})
+
 export const scopeEvaluationContext = (context: EvaluationContext): EvaluationContext => ({
-	bindings: Object.create(context.bindings),
+	bindings: [ new Map, ...context.bindings ],
 	statementLabel: undefined,
 	this: context.this,
 	signal: undefined,

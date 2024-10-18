@@ -79,13 +79,16 @@ export function evaluateStatementNode(node: StatementNode, context: EvaluationCo
 							constructorNode.params[index]!
 
 						if (childNode.type == `Identifier`)
-							constructorScope.variables[childNode.name] = args[index]
+							constructorScope.bindings[0]!.set(childNode.name, { value: args[index], readonly: false })
 						else if (childNode.type == `AssignmentPattern`) {
 							assert(childNode.left.type == `Identifier`, `${HERE} ${childNode.left.type}`)
 
-							constructorScope.variables[childNode.left.name] = args[index] === undefined
-								? evaluateExpressionNode(childNode.right, context)
-								: args[index]
+							constructorScope.bindings[0]!.set(childNode.left.name, {
+								value: args[index] === undefined
+									? evaluateExpressionNode(childNode.right, context)
+									: args[index],
+								readonly: false
+							})
 						} else
 							throw Error(`${HERE} ${childNode.type}`)
 					}
@@ -163,7 +166,7 @@ export function evaluateStatementNode(node: StatementNode, context: EvaluationCo
 				throw Error(`${HERE} ${definition.type}`)
 		}
 
-		context.variables[id.name] = constructor
+		context.bindings[0]!.set(id.name, { value: constructor, readonly: false })
 
 		return
 	}
@@ -290,7 +293,7 @@ export function evaluateStatementNode(node: StatementNode, context: EvaluationCo
 
 			const catchScope = scopeEvaluationContext(context)
 
-			catchScope.variables[node.handler.param.name] = error
+			catchScope.bindings[0]!.set(node.handler.param.name, { value: error, readonly: false })
 
 			evaluateStatementNode(node.handler.body, catchScope)
 
@@ -302,21 +305,19 @@ export function evaluateStatementNode(node: StatementNode, context: EvaluationCo
 	}
 
 	if (type == `VariableDeclaration`) {
-		const variableMap = node.kind == `var` || node.kind == `let` ? context.variables : context.constants
-
 		for (const childNode of node.declarations) {
 			const { id, init } = childNode
 
 			assert(id.type == `Identifier`, `${HERE} ${id.type}`)
-			// TODO maybe `context.variables` should just store the type of variable
-			delete context.constants[id.name]
 
-			variableMap[id.name] =
-				init ?
+			context.bindings[0]!.set(id.name, {
+				value: init ?
 					init.type == `FunctionExpression` ?
 						makeFunction(init, context, id.name)
 					: evaluateExpressionNode(init, context)
-				: undefined
+				: undefined,
+				readonly: node.kind == `const`
+			})
 		}
 
 		return

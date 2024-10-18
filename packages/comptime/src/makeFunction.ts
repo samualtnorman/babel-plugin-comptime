@@ -16,7 +16,7 @@ export function makeFunction(node: FunctionNode, context: EvaluationContext, nam
 		[name as any]: function(...args: unknown[]) {
 			const functionContext = scopeEvaluationContext(context)
 
-			functionContext.constants.arguments = arguments
+			functionContext.bindings[0]!.set(`arguments`, { value: arguments, readonly: true })
 
 			if (node.type != `ArrowFunctionExpression`)
 				functionContext.this = this
@@ -25,12 +25,16 @@ export function makeFunction(node: FunctionNode, context: EvaluationContext, nam
 				const childNode = node.params[index]!
 
 				if (childNode.type == `Identifier`)
-					functionContext.variables[childNode.name] = args[index]
+					functionContext.bindings[0]!.set(childNode.name, { value: args[index], readonly: false })
 				else if (childNode.type == `AssignmentPattern`) {
 					assert(childNode.left.type == `Identifier`, `childNode.left.type was ${childNode.left.type}`)
 
-					functionContext.variables[childNode.left.name] =
-						args[index] === undefined ? evaluateExpressionNode(childNode.right, context) : args[index]
+					functionContext.bindings[0]!.set(childNode.left.name, {
+						value: args[index] === undefined
+							? evaluateExpressionNode(childNode.right, context)
+							: args[index],
+						readonly: false
+					})
 				} else
 					throw Error(`${HERE} ${childNode.type}`)
 			}
