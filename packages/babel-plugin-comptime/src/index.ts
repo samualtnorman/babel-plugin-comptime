@@ -1,91 +1,135 @@
-import type { PluginObj } from "@babel/core"
-import type { EvaluationContext } from "js-comptime/dist/EvaluationContext.js"
-import { hoist } from "js-comptime/dist/hoist.js"
-import { transformStatementNode } from "js-comptime/dist/transformStatementNode.js"
-import BabelTraverse from "@babel/traverse"
-import { assert } from "@samual/lib/assert"
-import { makeFunction } from "js-comptime/dist/makeFunction.js"
-import { scopeEvaluationContext } from "js-comptime/dist/EvaluationContext.js"
+import type { NodePath, PluginObj } from "@babel/core"
 import { evaluateExpressionNode } from "js-comptime/dist/evaluateExpressionNode.js"
+import { EvaluationContext } from "js-comptime/dist/EvaluationContext"
 import { serialize } from "seroval"
-import BabelGenerator from "@babel/generator"
 
-const { default: generate } = BabelGenerator as any as { default: typeof BabelGenerator }
-const { default: traverse } = BabelTraverse as any as { default: typeof BabelTraverse }
+// const { default: generate } = BabelGenerator as any as { default: typeof BabelGenerator }
+// const { default: traverse } = BabelTraverse as any as { default: typeof BabelTraverse }
 
 export const babelPluginComptime = (): PluginObj => ({
 	name: "babel-plugin-comptime",
 	visitor: {
 		Program(path) {
-			const context: EvaluationContext = {
-				variables: Object.create(globalThis),
-				constants: Object.create(null),
-				statementLabel: undefined,
-				callSuper: undefined,
-				getSuperProperty: undefined,
-				signal: undefined,
-				this: undefined,
-				callSuperProperty: undefined
-			}
+			for (const childPath of path.get(`body`))
+				evaluateComptime(childPath)
 
-			hoist(path.node.body, context)
+			function evaluateComptime(path: NodePath): boolean {
+				if (path.isExportDefaultDeclaration()) {
+					evaluateComptime(path.get(`declaration`))
 
-			traverse(path.node, {
-				enter(path) {
-					if (path.node.leadingComments?.some(comment => comment.value.includes(`@comptime`))) {
-						// Object.entries(path.scope.bindings).map(([ name, binding ]) => {
-						// 	assert(binding.path.node.type == `FunctionDeclaration`, HERE)
-
-						// 	return [ name, makeFunction(binding.path.node, context) ]
-						// })
-
-						// console.debug(HERE, generate(path.node))
-
-						delete path.node.leadingComments
-
-						path.replaceWithSourceString(serialize(evaluateExpressionNode(path.node, context)))
-
-
-
-						// path.replaceWithSourceString
-
-						// console.log(path.scope.bindings.add?.identifier)
-					}
+					return false
 				}
-			})
 
-			// hoist(path.node.body, context)
+				if (path.isVariableDeclaration()) {
+					const { kind } = path.node
 
-			// for (const node of path.node.body) {
-			// 	if (node.type == `ExportDefaultDeclaration` && node.declaration.type == `StringLiteral` && node.declaration.value == `__ROLLUP__PREFLIGHT_CHECK_DO_NOT_TOUCH__`)
-			// 		continue
+					if (kind == `const`) {
+						for (const declarationPath of path.get(`declarations`)) {
+							const initPath = declarationPath.get(`init`)
 
-			// 	transformStatementNode(node, context)
-			// }
+							if (initPath.hasNode())
+								evaluateComptime(initPath)
+						}
+					}
 
-			// path.get()
+					return false
+				}
 
-			// if (!path.scope.hasGlobal("comptime$"))
-			// 	return
+				if (path.isExportNamedDeclaration()) {
+					const declarationPath = path.get(`declaration`)
 
-			// const [ variableDeclarationPath ] = path.unshiftContainer(
-			// 	"body",
-			// 	t.variableDeclaration("let", [ t.variableDeclarator(t.identifier("comptime$")) ])
-			// )
+					if (declarationPath.hasNode())
+						evaluateComptime(declarationPath)
 
-			// path.scope.crawl()
+					return false
+				}
 
-			// for (const referencePath of ensure(path.scope.getBinding("comptime$"), HERE).referencePaths) {
-			// 	assert(referencePath.parent.type == `CallExpression`, HERE)
-			// 	assert(referencePath.parent.arguments.length == 1, HERE)
+				if (path.isFunctionDeclaration()) {
+					for (const paramPath of path.get(`params`)) {
+						if (paramPath.isPattern())
+							evaluateComptime(paramPath)
+					}
 
-			// 	const argument = referencePath.parent.arguments[0]
+					evaluateComptime(path.get(`body`))
 
-			// 	assert(isExpression(argument), HERE)
-			// 	referencePath.parentPath!.replaceWithSourceString(serialize(run(argument, context)))
-			// }
+					return false
+				}
 
-			// variableDeclarationPath.remove()
+				if (path.isBlockStatement()) {
+					for (const statementPath of path.get(`body`))
+						evaluateComptime(statementPath)
+
+					return false
+				}
+
+				if (path.isReturnStatement()) {
+					const argumentPath = path.get(`argument`)
+
+					if (argumentPath.hasNode())
+						evaluateComptime(argumentPath)
+
+					return false
+				}
+
+				if (path.isStringLiteral() || path.isNumericLiteral())
+					return true
+
+				if (path.isIdentifier())
+					return false
+
+				if (path.isExpressionStatement()) {
+					if (evaluateComptime(path.get(`expression`)))
+						path.remove()
+
+					return false
+				}
+
+				let isComptime = true
+				const comptimeChildPaths: NodePath[] = []
+
+				if (path.isCallExpression()) {
+					checkPath(path.get(`callee`))
+
+					for (const argumentPath of path.get(`arguments`))
+						checkPath(argumentPath)
+				} else if (path.isBinaryExpression()) {
+					checkPath(path.get(`left`))
+					checkPath(path.get(`right`))
+				} else if (path.isMemberExpression()) {
+					checkPath(path.get(`object`))
+
+					if (path.node.computed)
+						checkPath(path.get(`property`))
+				} else
+					throw Error(`${HERE} ${path.type}`)
+
+
+				if (isComptime)
+					return true
+
+				for (const path of comptimeChildPaths) {
+					const context: EvaluationContext = {
+						bindings: [],
+						this: undefined,
+						signal: undefined,
+						callSuper: undefined,
+						statementLabel: undefined,
+						getSuperProperty: undefined,
+						callSuperProperty: undefined
+					}
+
+					path.replaceWithSourceString(serialize(evaluateExpressionNode(path.node as any, context)))
+				}
+
+				return false
+
+				function checkPath(path: NodePath) {
+					if (evaluateComptime(path))
+						comptimeChildPaths.push(path)
+					else
+						isComptime = false
+				}
+			}
 		}
 	}
 })

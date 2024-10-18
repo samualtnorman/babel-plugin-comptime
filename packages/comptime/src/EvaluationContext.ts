@@ -5,8 +5,7 @@ export type EvaluationContextSignal =
 	{ tag: EvaluationContextSignalTag.Return, value: unknown }
 
 export type EvaluationContext = {
-	variables: Record<string, unknown>
-	constants: Record<string, unknown>
+	bindings: Map<string, { value: unknown, readonly: boolean }>[]
 	statementLabel: string | undefined
 	this: unknown
 	callSuper: ((args: Iterable<unknown>) => unknown) | undefined
@@ -16,8 +15,7 @@ export type EvaluationContext = {
 }
 
 export const scopeEvaluationContext = (context: EvaluationContext): EvaluationContext => ({
-	variables: Object.create(context.variables),
-	constants: Object.create(context.constants),
+	bindings: Object.create(context.bindings),
 	statementLabel: undefined,
 	this: context.this,
 	signal: undefined,
@@ -27,23 +25,24 @@ export const scopeEvaluationContext = (context: EvaluationContext): EvaluationCo
 })
 
 export function getVariable(name: string, context: EvaluationContext): unknown {
-	if (name in context.constants)
-		return context.constants[name]
+	const map = context.bindings.find(map => map.has(name))
 
-	if (name in context.variables)
-		return context.variables[name]
+	if (!map)
+		throw new ReferenceError(`${HERE} Tried to get non-existent binding ${name}`)
 
-	throw new ReferenceError(`${HERE} ${name} is not defined`)
+	return map.get(name)!.value
 }
 
-export function setVariable(name: string, value: any, context: EvaluationContext): unknown {
-	if (name in context.constants)
-		throw new TypeError(`assignment to constant`)
+export function setVariable(name: string, value: any, context: EvaluationContext): void {
+	const map = context.bindings.find(map => map.has(name))
 
-	for (let scope = context.variables; scope; scope = Object.getPrototypeOf(scope)) {
-		if (Object.hasOwn(scope, name))
-			return scope[name] = value
-	}
+	if (!map)
+		throw new ReferenceError(`${HERE} Tried to set non-existent binding ${name}`)
 
-	throw new ReferenceError(`assignment to undeclared variable ${name}`)
+	const binding = map.get(name)!
+
+	if (binding.readonly)
+		throw new TypeError(`${HERE} Tried to set constant ${name}`)
+
+	binding.value = value
 }
